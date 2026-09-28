@@ -1,6 +1,11 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+void alarma(){
+    //Esto espera a que el no tenga hijos
+    wait(NULL);
+}
 pid_t Modulox(pid_t p){
     p = fork();
     switch (p)
@@ -20,25 +25,54 @@ pid_t Modulox(pid_t p){
     wait(NULL);
 }
 
-void ModuloY(pid_t p){
-    for(int i = 0; i < 3 ; i++){
-        p = fork();
-        if(p == 0){
-            continue;
-        }else if(i == 2){
-            execlp("ver contenido", "pstree","-c",NULL);
-            aniquilarHijos();
+void ModuloY(int x,pid_t p,int tiempo){
+    int array[x];
+    //Este modulo genera un cantidad de hijos x en el proceso p y lo almacena en un array
+    if (x > 0)
+    {
+       for (int i = 0; i < x; i++)
+        {
+            switch (fork())
+            {
+            case -1:
+                perror("Ha ocurrido algo durante el proceso de ejecución de xyz que ha fallado");
+                exit(1);
+                break;
+            case 0:
+                //Este sería el proceso hijo
+                if(i != 2){
+                    wait(NULL);
+                    array[i] = getpid();
+                }else if (i == 2)
+                {
+                    //Duerme X tiempo
+                    array[i] = getpid();
+                    sleep(tiempo);
+                    for (size_t j = 0; j < i; j++)
+                    {
+                        kill(array[i],SIGKILL);
+                    }
+                    
+                }                
+                break;
+            default:
+                //El padre no tiene que hacer nada por lo que
+                continue;
+                break;
+            }
         }
     }
-    wait(NULL);
+    
 }
+
+
 
 int main(int argc, char const *argv[])
 {
     pid_t pid;
     pid = Modulox(pid); // Esto sería A
     pid = Modulox(pid); // Esto sería B
-    ModuloY(pid); // Esto sería la creación de xyz
+    ModuloY(3,pid,); // Esto sería la creación de xyz
     
 
     return 0;
