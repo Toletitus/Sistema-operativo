@@ -6,6 +6,7 @@
 
 
 void Generarhorizontal(int x,int y,pid_t pidpadre){
+    pid_t array[x-1];
     for(size_t i = 0; i<x;i++){
         switch(fork()){
 
@@ -16,90 +17,51 @@ void Generarhorizontal(int x,int y,pid_t pidpadre){
                 //Este es el hijo,el hijo realizará el bucle
 
                 //Creamos array: 
-                pid_t array[x-1];
-                for(size_t j = 0;j<y-1,j++){
+                
+                for(size_t j = 0;j<y-1;j++){
                     switch(fork()){
                         case -1:
                             perror("Ha ocurrido un error");
                             break;
                         case 0:
                             //EL hijo
-                            if(j != y-1){
+                            if(j != y-2){
                                 continue;
-                            }else if(j == y-1 && i!=x){
+                            }else if(j == y-2 && i!=x){
                                 array[i] = getpid();
                                 pause();//Aquí esperamos a que nos envien una señal
-                            }else if(j == y-1 && i==x){
+                            }else if(j == y-2 && i==x){
                                 //Este sería el que tiene que ejecutar el exec y posteriormente enviarle una señal a las señales que estan en pause
-                                execlp("pstree","pstree","-c ",pidpadre,NULL);
-                                for(size_t k = 0;k<x-1;x++){
+                                for(size_t k = 0;k<x-1;k++){
                                     kill(array[k],SIGKILL); //Esto sería para matar los procesos
                                 }
+                                execlp("pstree","pstree","-c ",pidpadre,NULL);
+                                
                                 //Posteriormente podemos hacer un exit(0) para finalizar el programa y los demás procesos se borrarán debido a que esan en wait y los hijos han muerto todos
                                 exit(0);
                             }
                             break;
                         default:
                             //El padre tiene que esperar a los hijos
-                            wait();
+                            wait(NULL);
                             break;
                     }
                 }
                 break;
             default:
                 //El padre se espera a que finalice los hijos
-                wait(NULL);
+                if(i==x-1){wait(NULL);}
                 break;
         }
     }
 }
 int main(int argc, char const *argv[])
 {
-    
-    pid_t pid = getpid();
-    malla = getpid();
-    for (size_t i = 0; i < atoi(argv[1]); i++)
-    {
-        
-        switch (fork())
-        {
-        case -1:
-            perror("Hay un error");
-            break;
-        case 0:
-            //Hijo
-            for (size_t j = 0; j < atoi(argv[2])-1; j++)
-            {
-                if (i != atoi(argv[1])-1 && j != atoi(argv[2])-2)
-                {
-                    execlp("pstree","pstree","-c",NULL);
-                    exit(0);
-                }else{
-                    switch (fork())
-                    {
-                    case -1:
-                        perror("Hubo un error y");
-                        break;
-                    case 0:
-                        exit(0);
-                        break;
-                    default:
-                        wait(NULL);
-                        break;
-                    }
-                }
-                
-            }
-        default:
-            //Padre
-            continue;
-            break;
-        }
-
+    pid_t p = getpid();
+    if(argc == 3){
+        Generarhorizontal(atoi(argv[1]),atoi(argv[2]),p);
+    }else{
+        printf("No has puesto dos argumentos");
     }
-    
-    
-
-
     return 0;
 }
