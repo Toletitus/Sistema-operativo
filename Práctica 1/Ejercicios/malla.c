@@ -5,7 +5,7 @@
 
 int malla;
 void makegrandsons(int y,bool ultimo){
-    for (size_t i = 0; i < y; i++)
+    for (size_t i = 0; i < y-1; i++)
     {
         switch (fork()){
         case -1:
@@ -13,7 +13,7 @@ void makegrandsons(int y,bool ultimo){
             break;
         case 0:
             //hijo
-            if (i == y)
+            if (i == y && ultimo)
             {
                 sleep(10);
                 execlp("pstree","pstree","-d", getpid(),NULL);
@@ -30,9 +30,9 @@ void makegrandsons(int y,bool ultimo){
     
 }
 void makesons(pid_t pid,int x,int y){
-    pid_t hijos[x];
-    bool ultimo=false;
-    for (size_t i = 0; i < x; i++)
+    pid_t hijos[x]; // Creamos array
+    bool ultimo=false; //Booleano para comprobar que estamos en el último
+    for (size_t i = 0; i < x; i++)//Este bucle genera tantos hijos x que se pide
     {
         switch (fork())
         {
@@ -44,13 +44,20 @@ void makesons(pid_t pid,int x,int y){
             if (x-1==i)
             {
                 //Este  será el que tengamos que hacer el exec
+                hijos[i] = getpid();
                 ultimo = true;
                 makegrandsons(y,ultimo);
-            }else{makegrandsons(y,ultimo);}
+            }else{
+                hijos[i] = getpid(); // Ponemos el pid del hijo
+                makegrandsons(y,ultimo);
+            
+            }
+
             
             break;
         default:
             //Padre
+
             wait(NULL);
             break;
         }   
