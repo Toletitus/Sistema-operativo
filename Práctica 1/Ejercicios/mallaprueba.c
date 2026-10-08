@@ -17,15 +17,9 @@ void despertador(int s){
 /**
  * Valida los argumentos de entrada
  */
-bool Validarargumentos(int cantidad,int x,int y){
+bool Validarargumentos(int x,int y){
         // Validar argumentos
-    if (cantidad!=3)
-    {
-        perror("No has pasado los argumentos bien \n");
-        return false;
-    }
-
-    if (x < 0 || y < 0)
+    if (x <= 0 || y <= 0)
     {
         perror("Los datos están en negativos\n");
         return false;
@@ -47,12 +41,13 @@ void CrearVertical(int x,int y){
             pause();
             kill(pid,SIGUSR1);
             wait(NULL);
+            exit(0);
             break;
         }else{
             continue;
         }
     }
-    if (x != colum && y != filas)
+    if (x != colum-1 && y != filas-2)
     {
         pause();
         //Cuando le llegue la señal se muere el último
@@ -78,6 +73,7 @@ void CrearHorizontal(int x,int y,pid_t hijo[]){
         case 0:
             //Hijo
             CrearVertical(i,y-1);
+            //No tiene que salir ningun hijo,hay pauses en la funcion
             break;
         default:
             //Padre
@@ -85,13 +81,8 @@ void CrearHorizontal(int x,int y,pid_t hijo[]){
             continue;
             break;
         }
-        pause();
-        kill(pidhijo,SIGKILL);
-        wait(NULL);
-        exit(0);
+        
     }
-
-    
     
 }
 
@@ -99,12 +90,20 @@ void CrearHorizontal(int x,int y,pid_t hijo[]){
 int main(int argc, char const *argv[])
 {
     //Validar argumentos
-    if (!Validarargumentos(argc,atoi(argv[1]),atoi(argv[2])))
+    if (argc == 3)
     {
+        if (!Validarargumentos(atoi(argv[1]),atoi(argv[2])))
+        {
+            return 1;
+        }
+        
+    }
+    else{
         return 1;
     }
     
 
+    
     //Muestra ID
     pidmalla = getpid();
     
@@ -112,7 +111,7 @@ int main(int argc, char const *argv[])
     filas = atoi(argv[2]);
     printf("Hola soy malla y soy %d",getpid());
     // Signal()
-    signal(SIGKILL,despertador);
+    signal(SIGUSR1,despertador);
 
     //Necesitamos saber el pid de los hijos
     pid_t hijo[colum];
@@ -123,16 +122,24 @@ int main(int argc, char const *argv[])
     pause();
 
 
-    char pidpadre[16];
-    snprintf(pidpadre,sizeof(char)*16,pidpadre);
-    execlp("pstree","pstree","-c",pidpadre,NULL);
+
+    if(fork() == 0){
+        char pidpadre[16];
+        snprintf(pidpadre, sizeof pidpadre, "%d", getppid());
+        execlp("pstree","pstree","-c",pidpadre,NULL);
+        kill(getppid(),SIGUSR1);
+        exit(1);
+    }
+    wait(NULL);
+    
     for (size_t i = 0; i < colum; i++)
     {
-        kill(hijo[i],SIGKILL);
+        kill(hijo[i],SIGUSR1);
+        wait(NULL);//Espera a que muera toda la columna
     }
     
     //printmuero
-    printf("Soy Malla (%d) y me muero\n",getpid());
+    printf("Soy Malla (%d) y me muero \n",getpid());
 
     //exit
     exit(0);
