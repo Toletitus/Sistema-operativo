@@ -33,23 +33,17 @@ void nom_fichero(char *dest, char *orig, int i) {
     dest[j] = '\0';
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        print_msg("Uso: ./hacha <archivo> <tamano>\n");
-        return 1;
-    }
-
-    char *archivo = argv[1];
-    int tam = a_entero(argv[2]);
-
-    // abrimos el archivo original
+// Abre el archivo original (devuelve -1 y avisa si falla)
+int abrir_origen(char *archivo) {
     int fd = open(archivo, O_RDONLY);
     if (fd < 0) {
         print_msg("Error al abrir el archivo\n");
-        return 1;
     }
+    return fd;
+}
 
-    // pillo el tamaño total y vuelvo al principio
+// Calcula cuantos trozos salen (mide el archivo y vuelve al principio)
+int calcular_trozos(int fd, int tam) {
     off_t total = lseek(fd, 0, SEEK_END);
     lseek(fd, 0, SEEK_SET);
 
@@ -57,66 +51,86 @@ int main(int argc, char *argv[]) {
     if (total % tam != 0) {
         trozos++;
     }
+    return trozos;
+}
 
-    char buf[4096]; 
+// --- HIJO: lee del tubo y escribe en su archivo .hNN
+void proceso_hijo(int tubo[2], char *archivo, int i) {
+    char buf[4096];
+    close(tubo[1]); // solo va a leer
 
-    // bucle para ir creando cada cacho
-    for (int i = 0; i < trozos; i++) {
-        int tubo[2];
-        
-        if (pipe(tubo) == -1) {
-            print_msg("Fallo en la tuberia\n");
-            return 1;
-        }
+    char nombre[256];
+    nom_fichero(nombre, archivo, i);
 
-        pid_t pid = fork();
+    int f_dest = open(nombre, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    int leido;
 
-        if (pid < 0) {
-            print_msg("Fallo en el fork\n");
-            return 1;
-        }
-
-        if (pid == 0) {
-            // --- HIJO ---
-            close(tubo[1]); // solo va a leer
-
-            char nombre[256];
-            nom_fichero(nombre, archivo, i);
-
-            int f_dest = open(nombre, O_CREAT | O_WRONLY | O_TRUNC, 0666);
-            int leido;
-            
-            // lee del tubo y escribe en su archivo
-            while ((leido = read(tubo[0], buf, sizeof(buf))) > 0) {
-                write(f_dest, buf, leido);
-            }
-
-            close(tubo[0]);
-            close(f_dest);
-            exit(0);
-
-        } else {
-            // --- PADRE ---
-            close(tubo[0]); // solo va a escribir
-
-            int falta = tam;
-            int leido;
-
-            while (falta > 0) {
-                int leer_ahora = (falta < sizeof(buf)) ? falta : sizeof(buf);
-                
-                leido = read(fd, buf, leer_ahora);
-                if (leido <= 0) break; 
-                
-                write(tubo[1], buf, leido);
-                falta -= leido;
-            }
-
-            close(tubo[1]);
-            wait(NULL); // me quedo esperando a que acabe el hijo
-        }
+    while ((leido = read(tubo[0], buf, sizeof(buf))) > 0) {
+        write(f_dest, buf, leido);
     }
 
+    close(tubo[0]);
+    close(f_dest);
+    exit(0);
+}
+
+// --- PADRE: lee 'tam' bytes del original y los manda por el tubo
+void proceso_padre(int tubo[2], int fd, int tam) {
+    char buf[4096];
+    close(tubo[0]); // solo va a escribir
+
+    int falta = tam;
+    int leido;
+
+    while (falta > 0) {
+        int leer_ahora = (falta < sizeof(buf)) ? falta : sizeof(buf);
+
+        leido = read(fd, buf, leer_ahora);
+        if (leido <= 0) break;
+
+        write(tubo[1], buf, leido);
+        falta -= leido;
+    }
+
+    close(tubo[1]);
+    wait(NULL); // me quedo esperando a que acabe el hijo
+}
+
+// Crea el trozo numero i (tuberia + fork). Devuelve 1 si hay error
+int crear_trozo(int fd, char *archivo, int tam, int i) {
+    int tubo[2];
+
+    if (pipe(tubo) == -1) {
+        print_msg("Fallo en la tuberia\n");
+        return 1;
+    }
+
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        print_msg("Fallo en el fork\n");
+        return 1;
+    }
+
+    if (pid == 0) {
+        proceso_hijo(tubo, archivo, i);
+    } else {
+        proceso_padre(tubo, fd, tam);
+    }
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        print_msg("Uso: ./hacha <archivo> <tamano>\n");
+        return 1;
+    }
+    int tam = a_entero(argv[2]);
+    int fd = abrir_origen(argv[1]);
+    if (fd < 0) return 1;
+    int trozos = calcular_trozos(fd, tam);
+    for (int i = 0; i < trozos; i++)
+        if (crear_trozo(fd, argv[1], tam, i)) return 1;
     close(fd);
     return 0;
 }
