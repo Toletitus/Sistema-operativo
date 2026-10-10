@@ -14,14 +14,23 @@ void despertador(int s){
 
 }
 
+
 /**
  * Valida los argumentos de entrada
  */
-bool Validarargumentos(int x,int y){
-        // Validar argumentos
+bool Validarargumentos(int argc, char const *argv[]){
+    if (argc != 3)
+    {
+        fprintf(stderr, "Uso: %s <columnas> <filas>\n", argv[0]);
+        return false;
+    }
+
+    int x = atoi(argv[1]);
+    int y = atoi(argv[2]);
+
     if (x <= 0 || y <= 0)
     {
-        perror("Los datos están en negativos\n");
+        fprintf(stderr, "Los datos deben ser mayores que 0\n");
         return false;
     }
     return true;
@@ -90,17 +99,11 @@ void CrearHorizontal(int x,int y,pid_t hijo[]){
 int main(int argc, char const *argv[])
 {
     //Validar argumentos
-    if (argc == 3)
+    if (!Validarargumentos(argc, argv))
     {
-        if (!Validarargumentos(atoi(argv[1]),atoi(argv[2])))
-        {
-            return 1;
-        }
-        
-    }
-    else{
         return 1;
     }
+
     
 
     
@@ -109,7 +112,7 @@ int main(int argc, char const *argv[])
     
     colum = atoi(argv[1]);
     filas = atoi(argv[2]);
-    printf("Hola soy malla y soy %d",getpid());
+    printf("Hola soy malla y soy %d\n",getpid());
     // Signal()
     signal(SIGUSR1,despertador);
 
