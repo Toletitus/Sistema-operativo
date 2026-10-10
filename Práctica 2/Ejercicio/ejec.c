@@ -3,12 +3,23 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <stdbool.h>
+#include <ctype.h>
 
 // Variables globales
 pid_t pidejec, pidA, pidB;
 int segunditos;
 
-
+//Validar argumentos
+bool ValidarArgumentos(int argc, char const *argv[])
+{
+    if (argc != 2 || argv[1] == NULL || argv[1][0] == '\0')
+        return false;
+    for (char const *p = argv[1]; *p; p++)
+        if (!isdigit((unsigned char)*p))
+            return false;
+    return atoi(argv[1]) > 0;
+}
 
 /**
  * Está vacía para despertar
@@ -90,7 +101,11 @@ void CreacionXYZ(){
 }
 int main(int argc, char const *argv[]) {
     //Validarargumentos
-
+    if (!ValidarArgumentos(argc, argv)) {
+    printf("ERROR CON LOS NUMEROS");
+    return 1;
+    }
+    
     segunditos = atoi(argv[1]);
     signal(SIGUSR1,despertar);
     signal(SIGALRM,alarma_Z);
