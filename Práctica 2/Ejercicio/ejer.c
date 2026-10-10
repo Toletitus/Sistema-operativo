@@ -10,12 +10,12 @@ int segunditos;
 
 void suicidio(int s){
     //Matar al proceso -> Una especie de sleep con kill
-    printf("Soy el proceso " + getpid());
-    printf(" y me muero \n");
-    kill(getpid(),SIGKILL);
+    kill()
 
 }
+void despertar(){
 
+}
 // Z solo avisa a A
 void alarma_Z(int sig){
     kill(pidA, SIGUSR1);
@@ -24,11 +24,12 @@ void alarma_Z(int sig){
 // A lanza pstree en un hijo auxiliar para no destruirse a sí mismo
 void manejador_pstree_A(int sig) {
     char pid_str[16];
-    snprintf(pid_str, sizeof(pid_str), "%d", pidA);
-    
-    execlp("pstree", "pstree", "-c", pid_str, NULL);
-    exit(0);
-    
+    snprintf(pid_str, sizeof(pid_str), "%d", pidejec);
+    if(fork() == 0){
+        execlp("pstree", "pstree", "-c", pid_str, NULL);
+        exit(0);
+    }
+    alarm(4);
     
     
 }
@@ -42,18 +43,21 @@ void crearhijosxyz(){
         } else if (hijo == 0) {
             // Hijo
             if (i == 0) {
-                printf("Soy el proceso X: mid pid es %d,mi padre es %d,mi abuelico es %d,mi bisabuelo es %d \n",pidX,pidB,pidA,pidejec);
+                printf("Soy el proceso X: mid pid es %d,mi padre es %d,mi abuelico es %d,mi bisabuelo es %d \n",getpid(),pidB,pidA,pidejec);
                 pause();
+                printf("Soy el proceso X(%d) y me muero",getpid());
                 exit(0);
             } else if (i == 1) {
-                printf("Soy el proceso Y: mid pid es %d,mi padre es %d,mi abuelico es %d,mi bisabuelo es %d \n",pidY,pidB,pidA,pidejec);
+                printf("Soy el proceso Y: mid pid es %d,mi padre es %d,mi abuelico es %d,mi bisabuelo es %d \n",getpid(),pidB,pidA,pidejec);
                 pause();
+                printf("Soy el proceso Y(%d) y me muero",getpid());
                 exit(0);
             } else if (i == 2) {
-                printf("Soy el proceso Z: mid pid es %d,mi padre es %d,mi abuelico es %d,mi bisabuelo es %d \n",pidZ,pidB,pidA,pidejec);
+                printf("Soy el proceso Z: mid pid es %d,mi padre es %d,mi abuelico es %d,mi bisabuelo es %d \n",getpid(),pidB,pidA,pidejec);
                 signal(SIGALRM, alarma_Z);
                 alarm(segunditos);
                 pause();
+                printf("Soy el proceso Z(%d) y me muero",getpid());
                 exit(0);
             }
         } else {
@@ -88,7 +92,7 @@ int main(int argc, char const *argv[]) {
         printf("Soy el proceso ejec. Mi pid es %d \n",getpid());
         segunditos = atoi(argv[1]);
         pidejec = getpid();
-        
+        signal(SIGUSR2,despertar);
         pidA = fork();
         if(pidA == 0){
             pidA = getpid(); // A actualiza su PID en su memoria
@@ -103,11 +107,11 @@ int main(int argc, char const *argv[]) {
                 printf("Soy el proceso B y este es mi pid %d,mi padre %d ,mi abuelico %d \n",pidB,pidA,pidejec);
                 crearhijosxyz();
                 wait(NULL); //B espera a sus hijos
-                printf("Soy el proceso B (" + getpid());
-                printf(" y me muero");
+                printf("Soy el proceso B (%d) y me muero",getpid());
                 exit(0);
             }
             wait(NULL); // A espera a B
+            kill(pidB,SIGUSR2);
             printf("Soy el proceso A y me muero");
             exit(0);
         }
